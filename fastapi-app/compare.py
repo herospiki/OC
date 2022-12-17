@@ -23,14 +23,10 @@ class Bins(BaseModel):
 binned_data_df = pd.read_pickle('binned_data.pkl')
 base_clients = pd.read_csv('sample_clients_for_demo.csv')
 
-
-
 def get_list():
     list_ids = list(base_clients['SK_ID_CURR'].values)
     result = {'all_ids' : list_ids}
     return result
-
-
 
 # Récupération de l'intervalle pour une valeur donnée à partir d'une liste d'intervalles
 
@@ -41,7 +37,6 @@ def get_interval(value, bin_list):
             return bin_list[i]
 
 # Récupération pour une feature de la liste des bins et du bin pour une valeur donnée
-
 
 def find_bins(binned_data_df, feature, value):
     cat_bins = binned_data_df[binned_data_df['feature']== feature]['bin'].unique()
@@ -54,9 +49,7 @@ def find_bins(binned_data_df, feature, value):
 def get_features(client_id, feature):
 
     value = base_clients.loc[base_clients['SK_ID_CURR'] == client_id][feature]
-
     interval, feature_bins = find_bins(binned_data_df, feature, value)
-  
     result = {'interval': str(interval),  
               'target': list(feature_bins['TARGET']), 
                'bins': list(feature_bins['bin'].astype('str')), 

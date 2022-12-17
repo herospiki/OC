@@ -3,7 +3,6 @@
 import pandas as pd
 import pickle
 from pydantic import BaseModel
-import re
 
 # Format de la réponse 
 

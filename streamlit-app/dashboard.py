@@ -2,14 +2,12 @@
 # streamlit run [app name]
 
 # Depuis une console : 
-#streamlit run https://github/ /dashboard.py
+#streamlit run dashboard.py
 
 #Local URL: http://localhost:8501
 #Network URL: http://192.168.0.89:8501
 
 import streamlit as st
-import pandas as pd
-import plotly.express as px
 from PIL import Image
 import json
 import requests
@@ -18,9 +16,7 @@ from visualisation import plot_waterfall, plot_comparison
 # Initial page config
 
 global local
-local = True
-
-
+local = False
 
 st.set_page_config(
      page_title='Prêt à dépenser',
@@ -28,14 +24,7 @@ st.set_page_config(
      initial_sidebar_state="expanded",
 )
 
-#@st.cache
-#def load_data(path):
-#    data = pd.read_pickle(path)
-#    return data
-
-#data = load_data('../backend/sample_clients.pkl')
-
-# request the prediction API with the client_id number (SK_ID_CURR)
+# Appelle l'API distante en fournissant l'identifiant client (SK_ID_CURR)
 
 def get_score(client_id): 
     if (local == True) :
@@ -46,6 +35,8 @@ def get_score(client_id):
     response = requests.get(url + 'scoring/' + str(client_id)) 
     response = json.loads(response.text)
     return response
+
+# Appelle l'API pour récupérer la liste des identifiants clients
 
 def get_list_of_ids(): 
     if (local == True) :
@@ -58,11 +49,17 @@ def get_list_of_ids():
     result = dict(list_ids=response['all_ids'])
     return result['list_ids']
 
+# Extrait de la réponse à get_score la décision, la probabilité, la liste des features les plus influentes
+# et les valeurs shap de celles-ci
+
 def extract_prediction(resp):
 	result = dict(status=resp['status'],probability=resp['probability'], best_features=resp['best_features'],
     shap_values = resp['shap_values'])
 	return result 
 
+# Requête l'API distante pour obtenir les valeurs discrétisées d'une feature en particulier 
+# et la répartition des négatifs et positifs dans ces intervalles. 
+# L'objectif est de positionner le client. 
 
 def get_data_for_comparison(client_id, feature): 
     if (local == True) :
@@ -74,17 +71,18 @@ def get_data_for_comparison(client_id, feature):
     response = json.loads(response.text)
     return response
 
+
+# Extrait de la réponse à la requête ci-dessus l'intervalle où le client se
+# positionne pour une feature donnée, ainsi que les répartitions des targets sur les valeurs
+# discrétisées de cette feature
+
 def extract_comparison_data(resp):
 	result = dict(interval=resp['interval'],target=resp['target'], bins=resp['bins'],
     percent_of_target= resp['percent_of_target'])
 	return result 
 
+# Ce panel permet de sélectionner l'identifiant d'un client, et d'afficher la réponse à la requête get_score
 
-def enter_id_client():
-    client_id = st.text_input('Label', 'Enter client id',label_visibility='hidden',key="placeholder")
-    return client_id
-
-  
 def panel_info_client(debug_mode):
     with st.container():
         col1, col2 = st.columns(2)
@@ -92,32 +90,19 @@ def panel_info_client(debug_mode):
         best_features = []
         shap_values = []
         with col1:
-           # tab1, tab2 = st.tabs(["Saisie directe", "Recherche"])
-            #with tab1:
-            #    st.write('Enter client id')
-            #    client_id = st.text_input('Label', st.session_state.selected_id,label_visibility='hidden',key="placeholder")
-            #with tab2:
+            #Sélection de l'id du client
             st.selectbox("Sélectionner l'identifiant de votre client",
                 ['0'] + get_list_of_ids(), key='selected_id')
             client_id = '0' if st.session_state.selected_id == '0' else st.session_state.selected_id
             if debug_mode :
                 st.write('You selected:', client_id)
-          #with st.expander("Liste des identifiants clients"):
-          #        st.write(get_list_of_ids())
-            #if int(client_id) :
-               # Préparer les fonctions avec les infos qu'on veut afficher
-               # base client
-             #   st.markdown('Infos client')
-        
         with col2:
             if int(client_id) :
-                #st.markdown('Décision')
             # Afficher score et proba du score  
                 infos = get_score(client_id)
                 resp = extract_prediction(infos)
                 status = resp['status']
                 proba = resp['probability']
-                #threshold = resp['threshold']
                 best_features = resp['best_features']
                 shap_values = resp['shap_values']
                 if (status == 1): 
@@ -133,12 +118,17 @@ def panel_info_client(debug_mode):
     
     return client_id, status, best_features, shap_values
 
+# Affichage des 15 features les plus influentes pour ce client,sous la forme d'un waterfall
+# où les shap_values indiquent le sens de l'influence (vers 1 ou vers 0)
+
 def show_decision_details(status, best_features, shap_values):
     with st.container():
         if (status != -1) :
             fig = plot_waterfall(best_features, shap_values, status)
             st.plotly_chart(fig)
 
+# Ce panel permet de sélectionner une feature et de récupérer la réponse
+# de l'appel à get_data_for_comparison 
 
 def panel_positionnement(debug_mode,client_id, status, best_features):
     interval = 0
@@ -146,8 +136,8 @@ def panel_positionnement(debug_mode,client_id, status, best_features):
     bins=[]
     percent_of_target=[]
     # Menu déroulant pour choisir les features en question
-    # Ici on va positionner le client parmi des clients similaires pour les 15 features en question (y compris le target
-    # à bien différencier)
+    # Ici on va positionner le client parmi des clients similaires pour les 15 features en question 
+    # (y compris le target à bien différencier)
     if (status != -1) :
         with st.form('feature selection'):
                 selected_feature = st.selectbox(label = 'Feature', options = best_features)
@@ -164,7 +154,9 @@ def panel_positionnement(debug_mode,client_id, status, best_features):
                     percent_of_target = resp['percent_of_target']
                   
     return interval, target, bins, percent_of_target
-            
+
+# Affiche un graphique avec les répartitions des targets pour une feature donnée et la position du client
+          
 def show_comparison_details(interval, target, bins, percent_of_target):
     with st.container():
         if (target != []) :
@@ -175,7 +167,6 @@ def hc_sidebar():
     st.sidebar.header('Prêt à dépenser')
     image = Image.open('logo.jpg')
     st.sidebar.image(image)
-    #st.sidebar.subheader('ABOUT')
     st.sidebar.markdown('Dashboard made by Sophie Piekarec')
     st.sidebar.markdown('''Link to Streamlit doc :  https://docs.streamlit.io/''')
 
