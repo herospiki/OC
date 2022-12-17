@@ -32,9 +32,14 @@ with open("final_model.sav", "rb") as f:
 def get_best_features(n_feat, model, customer, features):
     length = len(customer.columns) 
   
-    # renvoit la classe '0' ou'1' (proba 0.5)
+    # renvoit la classe '0' ou'1' (proba ajustée 0.616)
 
-    pred_value = int(model.predict(customer)[0])
+    #pred_value = int(model.predict(customer)[0])
+    pred_pos_proba = model.predict_proba(customer)[0][1]
+    if pred_pos_proba > 0.616 :
+        pred_value = 1
+    else :
+        pred_value = 0
 
     # renvoit la probabilité d'appartenir à la classe déterminée
     pred_proba = model.predict_proba(customer)[0][pred_value]
@@ -49,15 +54,12 @@ def get_best_features(n_feat, model, customer, features):
     # extraction de la liste des best features et des valeurs correspondantes
     best_features = abs_shap_values.nlargest(n_feat,0).index.values
     values = shap_df[best_features].values[0]
-    #best_features = []
-    #values = []
-
+   
     return pred_value, pred_proba, best_features, values
 
 
-# renvoit la classe '0' ou'1'
-# renvoit la probabilité d'appartenir à la classe '1'
-
+# renvoit la classe '0' ou'1', la probabilité d'appartenir à la classe '1'
+# les "best features" et les shap values.
 
 def predict(client_id):
 
