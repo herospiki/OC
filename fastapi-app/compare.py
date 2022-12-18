@@ -11,6 +11,7 @@ class Clients(BaseModel):
     all_ids : list[int]
 
 class Bins(BaseModel):
+    original_value : float
     interval: str
     target: list[int] = []
     bins: list[str] = []
@@ -49,9 +50,11 @@ def find_bins(binned_data_df, feature, value):
 def get_features(client_id, feature):
 
     value = base_clients.loc[base_clients['SK_ID_CURR'] == client_id][feature]
+    print(value)
     interval, feature_bins = find_bins(binned_data_df, feature, value)
-    result = {'interval': str(interval),  
+    result = {'original_value' : value,
+              'interval': str(interval),  
               'target': list(feature_bins['TARGET']), 
-               'bins': list(feature_bins['bin'].astype('str')), 
-               'percent_of_target': list(feature_bins['percent_of_target'])}
+              'bins': list(feature_bins['bin'].astype('str')), 
+              'percent_of_target': list(feature_bins['percent_of_target'])}
     return result
