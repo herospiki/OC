@@ -120,7 +120,7 @@ def panel_info_client(debug_mode):
                              str(round(100*float(proba), 2)) + ' %.')
                 if (debug_mode):
                     # if debug afficher resp
-                    with st.expander("### debug ###"):
+                    with st.expander("--- debug ---"):
                         st.write(resp)
 
     return client_id, status, best_features, shap_values
@@ -157,7 +157,7 @@ def panel_positionnement(debug_mode, client_id, status, best_features):
                 resp = get_data_for_comparison(client_id, selected_feature)
                 if (debug_mode):
                     # if debug afficher resp
-                    with st.expander("### debug ###"):
+                    with st.expander("--- debug ---"):
                         st.write(resp)
                 value = resp['original_value']
                 interval = resp['interval']
@@ -200,8 +200,6 @@ def hc_body():
     with tab2:
         value, interval, target, bins, percent_of_target = panel_positionnement(
             debug_mode, client_id, status, best_features)
-        if debug_mode :
-            st.write(value)
         show_comparison_details(value, interval, target,
                                 bins, percent_of_target)
 
